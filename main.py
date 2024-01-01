@@ -78,19 +78,20 @@ for day in range(1, days_to_simulate + 1):
             elif action == 4:
                 user.deduct_electricity_cost(market)
                 break
-            
+        # Check for bankruptcy
+        user.check_and_declare_bankruptcy(market)
+        
         initial_investment=10000
         balance = user.gbp_capital
         sdpa_value = user.sdpa_balance * market.sdpa_price  # Calculate with the final market price
-        mining_machine_investment = user.mining_machines * market.mining_machine_cost
-        profit_loss = balance + sdpa_value - initial_investment - mining_machine_investment
+        profit_loss = balance + sdpa_value - initial_investment
 
         print(f"\nUser: {user.username}")
+        print(f"Balance: {balance:.4f} GBP")
         print(f"Value of SDPA Holdings: {sdpa_value:.4f} GBP")
         print(f"Profit/Loss: {profit_loss:.4f} GBP\n")
 
-        # Check for bankruptcy
-        user.check_and_declare_bankruptcy(market)
+        
         
     # Generate the prices for the next day at the end of the current day
     market.deduct_market_electricity_cost()
@@ -106,6 +107,11 @@ for user in users:
     print(f"Value of SDPA Holdings: {sdpa_value:.4f} GBP")
     print(f"Investment in Mining Machines: {mining_machine_investment:.4f} GBP")
     print(f"Profit/Loss: {profit_loss:.4f} GBP\n")
+
+transactions = market.get_transaction_records()
+for transaction in transactions:
+    print(transaction)
+    
     
 
     
