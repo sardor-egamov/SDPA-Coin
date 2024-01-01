@@ -19,7 +19,9 @@ class UserAccount:
         cost = market.get_sdpa_price() * amount
         if cost <= self.gbp_capital:
             market.execute_trade(self, amount, "buy")
-            print(f"{self.username} bought {amount} SDPA. New balance: {self.gbp_capital:.2f} GBP")
+            print(f"{self.username} bought {amount} SDPA. New balance: {self.gbp_capital:.4f} GBP")
+            # Record transaction in blockchain
+            market.blockchain.record_buy_sdpa(self, amount, market.sdpa_price)
         else:
             print("Not enough GBP capital to complete this purchase.")
         
@@ -30,7 +32,9 @@ class UserAccount:
         """
         if amount <= self.sdpa_balance:
             market.execute_trade(self, amount, "sell")
-            print(f"{self.username} sold {amount} SDPA. New balance: {self.gbp_capital:.2f} GBP")
+            print(f"{self.username} sold {amount} SDPA. New balance: {self.gbp_capital:.4f} GBP")
+            # Record transaction in blockchain
+            market.blockchain.record_sell_sdpa(self, amount, market.sdpa_price)
         else:
             print("Not enough SDPA balance to complete this sale.")
         
@@ -42,7 +46,9 @@ class UserAccount:
         total_cost = market.mining_machine_cost * quantity
         if total_cost <= self.gbp_capital:
             market.execute_buy_mining_machines(self,quantity)
-            print(f"{self.username} bought {quantity} mining machines. New balance: {self.gbp_capital:.2f} GBP")
+            print(f"{self.username} bought {quantity} mining machines. New balance: {self.gbp_capital:.4f} GBP")
+            # Record transaction in blockchain
+            market.blockchain.record_buy_mining_machine(self, quantity, market.mining_machine_cost)
         else:
             print("Not enough GBP capital to buy mining machines.")
             
@@ -50,8 +56,10 @@ class UserAccount:
         total_cost = market.electricity_price * self.mining_machines
         if self.gbp_capital >= total_cost:
             market.execute_deduct_electricity_cost(self, total_cost)
+            print(f"\n{self.username} paid {total_cost:.4f} GBP for electricity. New balance: {self.gbp_capital:.4f} GBP")
         else:
             # Handle the scenario when the user cannot pay for the electricity
+            self.gbp_capital-=self.gbp_capital
             print("Insufficient funds to cover electricity costs.")
             
     def check_and_declare_bankruptcy(self, market):
@@ -71,6 +79,14 @@ class BlockchainSystem:
         self.transactions = []  # List to store all transactions
         self.total_sdpa_mined = 0  # Total SDPA mined in the system
         self.daily_sdpa_generation = 100  # Total SDPA generated daily
+        self.sdpa_price_history = [] # List to store sdpa price history
+        self.electricity_price_history = [] # List to store electricity price history
+
+    def record_transaction(self, transaction):
+        """
+        Records a transaction in the blockchain system.
+        """
+        self.transactions.append(transaction)
 
     def distribute_sdpa(self, user_accounts, market):
         """
@@ -91,12 +107,56 @@ class BlockchainSystem:
                     'user': user.username,
                     'amount': generated_sdpa
                 })
+        market_generated_sdpa = (market.mining_machines / total_mining_machines) * self.daily_sdpa_generation
+        market.sdpa_balance += market_generated_sdpa
+        self.record_transaction({
+            'type': 'mining_reward',
+            'user': 'Market',
+            'amount': market_generated_sdpa
+        })
+    def record_buy_sdpa(self, user, amount, price):
+        
+        """
+        Records a transaction of a user buying SDPA.
+        It logs the type of transaction ('buy_sdpa'), the username, the amount of SDPA purchased, and the price at which it was bought.
+        """
+        total_value = amount * price
+        self.record_transaction({
+            'type': 'buy_sdpa',
+            'user': user.username,
+            'amount': amount,
+            'price': price,
+            'total_value': total_value
+        })
 
-    def record_transaction(self, transaction):
+    def record_sell_sdpa(self, user, amount, price):
+        
         """
-        Records a transaction in the blockchain system.
+        Records a transaction of a user selling SDPA.
+        It logs the type of transaction ('sell_sdpa'), the username, the amount of SDPA purchased, and the price at which it was sold.
         """
-        self.transactions.append(transaction)
+        total_value = amount * price
+        self.record_transaction({
+            'type': 'sell_sdpa',
+            'user': user.username,
+            'amount': amount,
+            'price': price,
+            'total_value': total_value
+        })
+
+    def record_buy_mining_machine(self, user, quantity, price):
+        """
+        Records a transaction of a user selling mining machine.
+        It logs the type of transaction ('buy_mining_machine'), the username, the amount of mining machines purchased, and the price at which it was bought.
+        """
+        total_value = quantity * price
+        self.record_transaction({
+            'type': 'buy_mining_machine',
+            'user': user.username,
+            'quantity': quantity,
+            'price': price,
+            'total_value': total_value
+        })
 
 class Market:
     def __init__(self):
@@ -109,6 +169,7 @@ class Market:
         self.sdpa_price = 40  # Initial SDPA price
         self.electricity_price = random.uniform(1.9, 2.1)  # Initial electricity price
         self.mining_machine_cost = 600 # Cost of a mining machine
+        self.blockchain = BlockchainSystem()
 
     def generate_daily_prices(self):
         """
@@ -147,7 +208,6 @@ class Market:
             user.gbp_capital -= total_cost
             user.mining_machines += quantity
             self.mining_machines -= quantity  # Update the number of mining machines in the market
-            print(f"{user.username} purchased {quantity} mining machines.")
         #UserAccount class already covers the following scenario. Added as an additional safety net.
         else:
             print(f"{user.username} cannot afford to buy {quantity} mining machines or not enough machines in the market.") 
@@ -155,7 +215,6 @@ class Market:
     def execute_deduct_electricity_cost(self, user, total_cost):
         if user.gbp_capital >= total_cost:
             user.gbp_capital -= total_cost
-            print(f"Electricity cost of {total_cost:.2f} GBP deducted from {user.username}'s account.")
         else:
             print(f"{user.username} does not have enough funds to cover electricity costs.")
 
@@ -164,6 +223,21 @@ class Market:
         Returns the current price of SDPA.
         """
         return self.sdpa_price
+        
+    def execute_bankruptcy(self, user):
+        """
+        Manages the bankruptcy process for a user.
+        Transfers the user's SDPA balance and mining machines back to the market.
+        """
+        self.sdpa_balance += user.sdpa_balance  # Absorb user's SDPA balance
+        self.mining_machines += user.mining_machines  # Absorb user's mining machines
+        user.sdpa_balance = 0  # Reset user's SDPA balance
+        user.mining_machines = 0  # Reset user's mining machines
+        print(f"{user.username} has been declared bankrupt and removed from the system.")
+        
+    def get_transaction_records(self):
+        
+        return self.blockchain.transactions
         
     def deduct_market_electricity_cost(self):
         total_cost = self.electricity_price * self.mining_machines
