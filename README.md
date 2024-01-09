@@ -44,4 +44,4 @@ Mining and Its Costs: The role of mining in the simulation sheds light on its im
 Investment Risks: The possibility of users facing financial challenges in the simulation echoes the high-risk nature of investing and trading in cryptocurrencies.
 
 Blockchain's Role: The use of a blockchain system to record transactions in the simulation highlights its real-world importance in ensuring transaction integrity and trust.
-While the simulation offers a foundational view, real-world cryptocurrency markets are more complex, influenced by a wider array of factors such as global economic conditions, technological advancements, and regulatory environmemnts 
+While the simulation offers a foundational view, real-world cryptocurrency markets are more complex, influenced by a wider array of factors such as global economic conditions, technological advancements, and regulatory environments. 
