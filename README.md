@@ -1,4 +1,6 @@
 SDPA Coin Market Simulation
+https://github.com/sardor2412/oi23453_EMATM004
+
 Overview
 This project simulates a cryptocurrency market environment, focusing on user interactions within a digital currency market named SDPA Coin. The simulation is implemented in Python and is structured into two main files: SDPA_Coin.py and main.py.
 
