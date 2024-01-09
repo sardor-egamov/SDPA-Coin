@@ -10,6 +10,7 @@ class UserAccount:
         self.gbp_capital = gbp_capital
         self.sdpa_balance = sdpa_balance
         self.mining_machines = mining_machines
+        self.are_machines_on = True  # All machines are initially on
 
     def buy_sdpa(self, amount, market):
         """
@@ -53,7 +54,11 @@ class UserAccount:
             print("Not enough GBP capital to buy mining machines.")
             
     def deduct_electricity_cost(self, market):
-        total_cost = market.electricity_price * self.mining_machines
+        """
+        Deducts electiricity cost from the user for a specified number of mining machines at the market's current electricity price.
+        The user's GBP capital is updated accordingly.
+        """
+        total_cost = market.electricity_price * self.mining_machines if self.are_machines_on else 0
         if self.gbp_capital >= total_cost:
             market.execute_deduct_electricity_cost(self, total_cost)
             print(f"\n{self.username} paid {total_cost:.4f} GBP for electricity. New balance: {self.gbp_capital:.4f} GBP")
@@ -69,6 +74,33 @@ class UserAccount:
         """
         if self.gbp_capital <= 0:
             market.execute_bankruptcy(self)
+
+    def toggle_mining_machines(self):
+                    
+        """
+        Toggles mining machines on/off. 
+        """
+        
+        self.are_machines_on = not self.are_machines_on
+        status = "on" if self.are_machines_on else "off"
+        print(f"All machines turned {status}.")
+    
+    def sell_mining_machine(self, quantity, market):
+        """
+        Allows the user to sell a specified number of mining machines at the market's current price.
+        The user's GBP capital and number of mining machines are updated accordingly.
+        """
+        if quantity <= self.mining_machines:
+            market.execute_sell_mining_machines(self, quantity)
+            print(f"{self.username} sold {quantity} mining machines. New balance: {self.gbp_capital:.4f} GBP")
+            # Record transaction in blockchain
+            market.blockchain.record_sell_mining_machine(self, quantity, market.mining_machine_price_to_sell)
+        else:
+            print("Not enough mining machines to complete this sale.")
+
+
+
+
 
 
 class BlockchainSystem:
@@ -157,6 +189,20 @@ class BlockchainSystem:
             'price': price,
             'total_value': total_value
         })
+        
+    def record_sell_mining_machine(self, user, quantity, price):
+        """
+        Records a transaction of a user selling mining machine.
+        It logs the type of transaction ('buy_mining_machine'), the username, the amount of mining machines purchased, and the price at which it was bought.
+        """
+        total_value = quantity * price
+        self.record_transaction({
+            'type': 'sell_mining_machine',
+            'user': user.username,
+            'quantity': quantity,
+            'price': price,
+            'total_value': total_value
+        })
 
 class Market:
     def __init__(self):
@@ -170,6 +216,8 @@ class Market:
         self.electricity_price = random.uniform(1.9, 2.1)  # Initial electricity price
         self.mining_machine_cost = 600 # Cost of a mining machine
         self.blockchain = BlockchainSystem()
+        self.daily_mining_machines_to_add = 10
+        self.mining_machine_price_to_sell = 300
 
     def generate_daily_prices(self):
         """
@@ -213,6 +261,10 @@ class Market:
             print(f"{user.username} cannot afford to buy {quantity} mining machines or not enough machines in the market.") 
 
     def execute_deduct_electricity_cost(self, user, total_cost):
+        """
+        Handles the purchase deduction of electricity cost from a user.
+        """
+        
         if user.gbp_capital >= total_cost:
             user.gbp_capital -= total_cost
         else:
@@ -240,6 +292,36 @@ class Market:
         return self.blockchain.transactions
         
     def deduct_market_electricity_cost(self):
+        """
+        deducts electricity cost from the market
+        """
+        
         total_cost = self.electricity_price * self.mining_machines
         self.gbp_balance -= total_cost
         print(f"Market paid {total_cost:.4f} GBP for electricity. New balance: {self.gbp_balance:.4f} GBP")
+        
+    def add_mining_machines_daily(self):
+        """
+        Handles supply of mining machines to the market
+    
+        """
+        self.mining_machines+=self.daily_mining_machines_to_add
+        
+    def execute_sell_mining_machines(self, user, quantity):
+        """
+        Handles the sale of mining machines by a user.
+        Updates balances accordingly
+
+        """
+        
+        if quantity <= user.mining_machines:
+            self.gbp_balance -= quantity * self.mining_machine_price_to_sell
+            user.gbp_capital += quantity * self.mining_machine_price_to_sell
+            self.mining_machines += quantity
+            user.mining_machines -= quantity
+        else:
+            print(f"{user.username} does not have enough mining machines.")
+
+
+
+
