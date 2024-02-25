@@ -22,4 +22,4 @@ The simulation is built on object-oriented design principles, enhancing its modu
 The simulation utilizes Matplotlib to graphically display trends in SDPA Coin prices and user asset values over time, offering a visual representation of market dynamics.
 
 ## Conclusion
-This project serves as both an educational tool and a practical demonstration of cryptocurrency market mechanics, blockchain technology, and object-oriented programming. It aims to provide a comprehensive understanding of digital currency markets through an interactive simulation.
+This project serves as both an educational tool and a practical demonstration of cryptocurrency market mechanics, blockchain technology, and object-oriented programming. 
